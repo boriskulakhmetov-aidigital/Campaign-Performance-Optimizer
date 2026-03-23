@@ -65,7 +65,7 @@ export async function createSession(params: {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'id' }
+    { onConflict: 'id', ignoreDuplicates: true }
   );
 }
 
@@ -87,15 +87,19 @@ export async function updateSession(id: string, payload: Record<string, unknown>
 
 export async function writeJobStatus(jobId: string, payload: Record<string, unknown>) {
   const sb = getSupabase();
-  await sb.from('job_status').upsert(
-    {
-      id: jobId,
-      app: 'campaign-optimizer',
-      ...payload,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'id' }
-  );
+  // job_status schema: id, app, status, partial_text, report, error, meta, timestamps
+  // Put non-standard fields (like phase) into meta
+  const { phase, ...rest } = payload;
+  const row: Record<string, unknown> = {
+    id: jobId,
+    app: 'campaign-optimizer',
+    ...rest,
+    updated_at: new Date().toISOString(),
+  };
+  if (phase !== undefined) {
+    row.meta = { phase };
+  }
+  await sb.from('job_status').upsert(row, { onConflict: 'id' });
 }
 
 export async function readJobStatus(jobId: string) {

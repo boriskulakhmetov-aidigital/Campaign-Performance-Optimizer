@@ -177,8 +177,10 @@ function AppContent({
 
   useEffect(() => {
     if (!jobStatus) return
-    if (jobStatus.status === 'complete' && jobStatus.phase === 'analyzed') {
-      // Load report data from session
+    const jobPhase = (jobStatus as any).meta?.phase as string | undefined
+
+    if (jobStatus.status === 'complete' && phase === 'analyzing') {
+      // Analysis done — load report data and trigger optimization
       if (supabase && sessionId) {
         supabase.from('cpo_sessions')
           .select('report_data, report')
@@ -188,15 +190,13 @@ function AppContent({
             if (data?.report_data) {
               setReportData(data.report_data)
               setReportMarkdown(data.report || '')
-
-              // Auto-trigger optimization
               handleOptimize(data.report_data)
             }
           })
       }
     }
-    if (jobStatus.status === 'complete' && jobStatus.phase === 'optimized') {
-      // Reload report with variations
+    if (jobStatus.status === 'complete' && phase === 'optimizing') {
+      // Optimization done — show report
       if (supabase && sessionId) {
         supabase.from('cpo_sessions')
           .select('report_data')
@@ -214,7 +214,7 @@ function AppContent({
     if (jobStatus.status === 'error') {
       setPhase('chat')
     }
-  }, [jobStatus?.status, jobStatus?.phase])
+  }, [jobStatus?.status, phase])
 
   async function handleOptimize(analysisData: any) {
     setPhase('optimizing')
