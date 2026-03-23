@@ -2,7 +2,9 @@ import type { Context } from '@netlify/functions';
 import { requireAuth } from './_shared/auth.ts';
 import { log } from './_shared/logger.ts';
 import { supabase, writeJobStatus, updateSession } from './_shared/supabase.ts';
+import { trackTokens } from './_shared/access.ts';
 import { GoogleGenAI } from '@google/genai';
+import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const MODEL = 'gemini-3.1-pro-preview';
@@ -94,6 +96,10 @@ ${JSON.stringify(underperformers, null, 2)}`;
       config: { temperature: 0.7, responseMimeType: 'application/json' },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
+
+    // Extract and log token usage
+    const tokens = extractGeminiTokens(result);
+    trackTokens(userId, 'campaign-optimizer', 'google', MODEL, tokens.inputTokens, tokens.outputTokens, tokens.totalTokens).catch(() => {});
 
     const text = result.text ?? '';
     let optimizeData: any;

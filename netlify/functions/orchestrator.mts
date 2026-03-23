@@ -1,9 +1,10 @@
 import type { Context } from '@netlify/functions';
 import { requireAuth } from './_shared/auth.ts';
-import { enforceAccess, trackUsage } from './_shared/access.ts';
+import { enforceAccess, trackUsage, trackTokens } from './_shared/access.ts';
 import { log } from './_shared/logger.ts';
 import { createSession, updateSession } from './_shared/supabase.ts';
 import { GoogleGenAI } from '@google/genai';
+import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const APP_NAME = 'campaign-optimizer';
@@ -111,12 +112,20 @@ export default async (req: Request, _context: Context) => {
           });
 
           let fullText = '';
+          let lastChunk: any = null;
           for await (const chunk of result) {
+            lastChunk = chunk;
             const text = chunk.text ?? '';
             if (text) {
               fullText += text;
               send('text_delta', { text });
             }
+          }
+
+          // Extract and log token usage
+          if (lastChunk) {
+            const tokens = extractGeminiTokens(lastChunk);
+            trackTokens(userId, APP_NAME, 'google', MODEL, tokens.inputTokens, tokens.outputTokens, tokens.totalTokens).catch(() => {});
           }
 
           // Persist messages after streaming completes
