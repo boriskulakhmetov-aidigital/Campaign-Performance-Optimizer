@@ -95,8 +95,9 @@ export default async (req: Request, _context: Context) => {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
-        function send(event: string, data: unknown) {
-          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        function send(type: string, data: Record<string, unknown>) {
+          const payload = { type, ...data };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
         }
 
         try {

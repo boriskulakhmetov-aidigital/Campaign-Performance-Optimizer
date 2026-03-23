@@ -30,7 +30,7 @@ export function useOrchestrator(
   supabase: SupabaseClient | null,
   onSidebarRefresh?: () => void,
 ) {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const [state, setState] = useState<State>({ messages: [], streaming: false, error: null });
   const messagesRef = useRef<ChatMessage[]>([]);
   const sessionIdRef = useRef(crypto.randomUUID());
@@ -63,17 +63,19 @@ export function useOrchestrator(
     setState(s => ({ ...s, messages: messagesRef.current, streaming: true }));
 
     // Save session on first message
-    if (!sessionSavedRef.current && supabase) {
+    if (!sessionSavedRef.current && supabase && userId) {
       const title = userText.length > 60 ? userText.slice(0, 60) + '\u2026' : userText;
-      await supabase.from('cpo_sessions').upsert(
+      const { error: upsertErr } = await supabase.from('cpo_sessions').upsert(
         {
           id: sessionIdRef.current,
+          user_id: userId,
           status: 'chatting',
           title,
           messages: [{ role: 'user', content: userText }],
         },
         { onConflict: 'id', ignoreDuplicates: true },
       );
+      if (upsertErr) console.error('Session upsert failed:', upsertErr);
       sessionSavedRef.current = true;
       onSidebarRefresh?.();
     }
