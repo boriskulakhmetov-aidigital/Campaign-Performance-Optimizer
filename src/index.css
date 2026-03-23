@@ -1,0 +1,17 @@
+/* Global reset — theme variables come from applyTheme() */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: var(--font-size-base, 15px);
+  line-height: var(--line-height, 1.6);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.4s ease-in, color 0.4s ease-in;
+}
+
+#root { min-height: 100vh; display: flex; flex-direction: column; }
+a { color: inherit; text-decoration: none; }
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: thin; }
