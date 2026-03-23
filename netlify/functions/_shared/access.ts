@@ -4,12 +4,12 @@ import type { AccessSource } from '@boriskulakhmetov-aidigital/design-system/log
 import { supabase } from './supabase.js';
 
 export async function enforceAccess(userId: string, app: string) {
-  return await checkAccess(supabase as any, userId, app);
+  return await checkAccess(supabase, userId, app);
 }
 
 export async function trackUsage(userId: string, app: string) {
-  const orgId = await getUserOrgId(supabase as any, userId);
-  await recordUsage(supabase as any, userId, orgId, app);
+  const orgId = await getUserOrgId(supabase, userId);
+  await recordUsage(supabase, userId, orgId, app);
 }
 
 export async function trackTokens(
@@ -22,9 +22,9 @@ export async function trackTokens(
   totalTokens: number,
 ) {
   if (!userId || totalTokens === 0) return;
-  const orgId = await getUserOrgId(supabase as any, userId);
+  const orgId = await getUserOrgId(supabase, userId);
   const source: AccessSource = detectSource(userId);
-  await logTokenUsage(supabase as any, {
+  await logTokenUsage(supabase, {
     userId, orgId, app, source, aiProvider, aiModel, inputTokens, outputTokens, totalTokens,
   });
 }
