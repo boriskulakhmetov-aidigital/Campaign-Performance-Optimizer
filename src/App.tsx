@@ -22,7 +22,7 @@ import { useAuth } from '@clerk/react'
 import { useOrchestrator } from './hooks/useOrchestrator'
 import { parseGoogleAdsCsv } from './lib/csv-parser'
 import CampaignSidebar from './components/CampaignSidebar'
-import type { CpoReportData, CampaignSummary } from './lib/types'
+import type { CpoReportData, CampaignSummary, ParsedCsvResult } from './lib/types'
 import './App.css'
 
 const supabaseConfig = import.meta.env.VITE_SUPABASE_URL ? {
@@ -128,6 +128,7 @@ function AppContent({
   const [reportMarkdown, setReportMarkdown] = useState('')
   const [reportFormat, setReportFormat] = useState<'visual' | 'markdown'>('visual')
   const [csvFileName, setCsvFileName] = useState<string | null>(null)
+  const [csvPreview, setCsvPreview] = useState<ParsedCsvResult | null>(null)
   const [campaignId, setCampaignId] = useState<string | null>(null)
 
   // Expose supabase to sidebar
@@ -250,16 +251,17 @@ function AppContent({
     })
   }
 
-  // CSV file handler
+  // CSV file handler — parses and stages the file, user sends the message
   function handleCsvFile(file: File) {
     setCsvFileName(file.name)
     const reader = new FileReader()
     reader.onload = (e) => {
       const text = e.target?.result as string
       setCsvText(text)
-
-      // Parse for preview
       const result = parseGoogleAdsCsv(text)
+      setCsvPreview(result)
+
+      // Auto-send with summary so the orchestrator gets context immediately
       if (result.errors.length === 0) {
         sendMessage(
           `I've uploaded a Google Ads CSV file "${file.name}" with ${result.totalAds} ads across ${result.campaigns.length} campaign(s). Total spend: $${result.totalSpend.toFixed(2)}. Please analyze this data.`
@@ -307,6 +309,7 @@ function AppContent({
     setReportData(null)
     setReportMarkdown('')
     setCsvFileName(null)
+    setCsvPreview(null)
     setCampaignId(null)
     setCurrentSessionId(null)
   }
@@ -389,28 +392,26 @@ function AppContent({
         welcomeTitle="Campaign Performance Optimizer"
         welcomeDescription="Upload your Google Ads CSV or paste campaign data to analyze performance and generate optimized ad variations."
         placeholder="Describe your campaign or paste performance data..."
-        aboveInput={
-          !csvFileName ? (
-            <div className="cpo-upload-bar">
-              <label className="cpo-upload-btn">
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) handleCsvFile(file)
-                    e.target.value = ''
-                  }}
-                />
-                Upload CSV
-              </label>
+        inputPrefix={
+          csvFileName ? (
+            <div className="cpo-csv-badge">
+              <span className="cpo-csv-badge__icon">&#128196;</span>
+              <span className="cpo-csv-badge__name">{csvFileName}</span>
+              {csvPreview && (
+                <span className="cpo-csv-badge__meta">
+                  {csvPreview.totalAds} ads &middot; {csvPreview.campaigns.length} campaign(s) &middot; ${csvPreview.totalSpend.toFixed(2)} spend
+                </span>
+              )}
+              <button className="cpo-csv-badge__clear" onClick={() => { setCsvFileName(null); setCsvText(null); setCsvPreview(null) }}>&times;</button>
             </div>
           ) : (
-            <div className="cpo-csv-badge">
-              {csvFileName}
-              <button onClick={() => { setCsvFileName(null); setCsvText(null) }}>&times;</button>
-            </div>
+            <UploadZone
+              onFile={handleCsvFile}
+              onUrl={() => {}}
+              onClear={() => {}}
+              accept=".csv,text/csv,application/vnd.ms-excel"
+              maxSizeMB={50}
+            />
           )
         }
       />
