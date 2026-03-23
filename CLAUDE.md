@@ -10,7 +10,7 @@
 | Abbreviation | CPO |
 | URL | https://campaign-optimizer.apps.aidigitallabs.com |
 | Repo | `boriskulakhmetov-aidigital/Campaign-Performance-Optimizer` |
-| Netlify Site ID | `TBD` |
+| Netlify Site ID | `c259d853-4e67-4829-b7af-b680a6856afd` |
 | Table | `cpo_sessions` |
 | Purpose | AI-powered campaign performance optimization tool |
 
