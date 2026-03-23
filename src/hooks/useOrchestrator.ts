@@ -4,29 +4,17 @@ import { parseSSEStream } from '@boriskulakhmetov-aidigital/design-system/utils'
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatMessage } from '@boriskulakhmetov-aidigital/design-system';
 
-interface AnalysisConfig {
-  campaignName: string;
-  platform: string;
-  objective: string;
-  vertical: string;
-  audienceType: string;
-  csvData: string;
-}
-
-type DispatchFn = (
-  config: AnalysisConfig,
-  sessionId: string,
-  messages: ChatMessage[],
-) => void;
-
 interface State {
   messages: ChatMessage[];
   streaming: boolean;
   error: string | null;
 }
 
+/**
+ * Chat orchestrator hook — pure conversation, no dispatch.
+ * The LLM drives the full workflow: ingest → analyze → optimize → report.
+ */
 export function useOrchestrator(
-  onDispatch: DispatchFn,
   supabase: SupabaseClient | null,
   onSidebarRefresh?: () => void,
 ) {
@@ -37,7 +25,6 @@ export function useOrchestrator(
   const sessionSavedRef = useRef(false);
   const csvTextRef = useRef<string | null>(null);
 
-  /** Store CSV text to be sent with the next message */
   function setCsvText(text: string | null) {
     csvTextRef.current = text;
   }
@@ -57,12 +44,11 @@ export function useOrchestrator(
   const sendMessage = useCallback(async (userText: string) => {
     setState(s => ({ ...s, error: null }));
 
-    // Add user message
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: userText };
     messagesRef.current = [...messagesRef.current, userMsg];
     setState(s => ({ ...s, messages: messagesRef.current, streaming: true }));
 
-    // Save session on first message
+    // Create session on first message
     if (!sessionSavedRef.current && supabase && userId) {
       const title = userText.length > 60 ? userText.slice(0, 60) + '\u2026' : userText;
       const { error: upsertErr } = await supabase.from('cpo_sessions').upsert(
@@ -100,15 +86,12 @@ export function useOrchestrator(
         throw new Error(err.error || `HTTP ${res.status}`);
       }
 
-      // Clear CSV after sending
+      // Clear CSV after sending — only sent once
       csvTextRef.current = null;
 
       for await (const event of parseSSEStream(res.body!)) {
         if (event.type === 'text_delta') {
           updateLastAssistant((event as any).text);
-        } else if (event.type === 'analysis_dispatch') {
-          const config = (event as any).analysisConfig as AnalysisConfig;
-          onDispatch(config, sessionIdRef.current, messagesRef.current);
         } else if (event.type === 'error') {
           throw new Error((event as any).message || 'Stream error');
         }
@@ -124,12 +107,11 @@ export function useOrchestrator(
           .eq('id', sessionIdRef.current);
       }
     } catch (err: any) {
-      const msg = err.message || 'Something went wrong';
-      setState(s => ({ ...s, error: msg }));
+      setState(s => ({ ...s, error: err.message || 'Something went wrong' }));
     } finally {
       setState(s => ({ ...s, streaming: false }));
     }
-  }, [getToken, supabase, onDispatch, onSidebarRefresh]);
+  }, [getToken, userId, supabase, onSidebarRefresh]);
 
   function reset() {
     messagesRef.current = [];
@@ -139,11 +121,7 @@ export function useOrchestrator(
     setState({ messages: [], streaming: false, error: null });
   }
 
-  /** Load a saved session into state */
-  function loadSession(session: {
-    id: string;
-    messages: Array<{ role: string; content: string }>;
-  }) {
+  function loadSession(session: { id: string; messages: Array<{ role: string; content: string }> }) {
     const msgs: ChatMessage[] = (session.messages || []).map((m, i) => ({
       id: `${session.id}-${i}`,
       role: m.role as 'user' | 'assistant',

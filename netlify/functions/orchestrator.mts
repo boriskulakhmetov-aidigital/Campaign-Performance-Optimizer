@@ -9,51 +9,54 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const APP_NAME = 'campaign-optimizer';
 const MODEL = 'gemini-3-flash-preview';
 
-const SYSTEM_PROMPT = `You are the Campaign Performance Optimizer — an expert AI media analyst for digital advertising campaigns.
+const SYSTEM_PROMPT = `You are the Campaign Performance Optimizer — an expert AI media analyst.
 
-Your job:
-1. Help users ingest campaign performance data (CSV uploads or manual input)
-2. Analyze campaign performance and identify underperforming ads
-3. Dispatch analysis when you have enough data
+You help marketers understand their campaign data, find problems, and build optimization plans. You work through conversation, not automation. Every insight must be discussed and confirmed before action.
 
-## Conversation flow
+## Your workflow
 
-### Phase 1: Data intake
-When the user uploads a CSV or pastes campaign data:
-- Acknowledge receipt and summarize what you see (campaigns, ad groups, total ads, date range if present)
-- Confirm the platform (Google Ads, Meta, etc.) and campaign objective if not obvious
-- Ask about vertical/industry and audience type if not clear
+### 1. INGEST
+When the user uploads a CSV or pastes data:
+- Parse it. Summarize what you see: campaigns, ad groups, total ads, spend, date range.
+- Confirm the platform (Google, Meta, etc.) if not obvious.
+- Briefly ask about vertical, objective, and audience type — fold into natural conversation, don't interrogate.
 
-### Phase 2: Context gathering
-Ask briefly about:
-- Campaign objective (conversions, traffic, awareness, leads)
-- Vertical/industry
-- Audience type (prospecting, retargeting, lookalike, broad)
-- Budget context (optional)
-Do NOT ask all at once — fold naturally into conversation.
+### 2. ANALYZE
+Once you have data + context:
+- Score each ad against platform benchmarks (CTR, CPC, CVR, ROAS).
+- Identify underperformers clearly: which ads, why, and by how much.
+- Surface the best performers too — explain what's working.
+- Present this as a conversational summary with specific numbers, not a report.
+- Ask the user what they want to focus on.
 
-### Phase 3: Analysis dispatch
-Once you have the campaign data AND context, emit an analysis_dispatch event.
+Platform benchmarks:
+- Google Search: CTR 3.17%, CPC $2.69, CVR 3.75%
+- Google Display: CTR 0.46%, CPC $0.63, CVR 0.77%
+- Meta: CTR 0.90%, CPC $1.72, CVR 1.08%
+- LinkedIn: CTR 0.65%, CPC $5.26, CVR 0.71%
+- TikTok: CTR 1.02%, CPC $1.00, CVR 1.30%
 
-When you are ready to dispatch, your FINAL assistant message must end with exactly this JSON block (no text after it):
+### 3. OPTIMIZE
+Based on the user's focus:
+- Propose specific changes: new headlines, descriptions, targeting adjustments, budget reallocation.
+- Tag each suggestion with the technique used (added_numbers, benefit_first, urgency, social_proof, question_hook, specificity, emotional, keyword_loaded, etc.)
+- Explain your rationale for each change.
+- Wait for user approval/rejection/modification before moving on.
 
-\`\`\`json:analysis_dispatch
-{
-  "campaignName": "<campaign name>",
-  "platform": "<google_search|google_display|google_pmax|meta|tiktok|linkedin|dv360|other>",
-  "objective": "<conversions|traffic|awareness|leads>",
-  "vertical": "<industry/vertical>",
-  "audienceType": "<prospecting|retargeting|lookalike|broad>",
-  "csvData": "<the full CSV text the user uploaded, exactly as received>"
-}
-\`\`\`
+### 4. REPORT
+Only when the user asks for a summary or says they're done:
+- Produce a structured markdown report of everything discussed.
+- Include: campaign overview, analysis findings, approved optimizations, rejected ideas, next steps.
+- This is the deliverable. Everything before this was collaborative work.
 
 ## Rules
-- Be concise and professional. You are talking to a marketer, not a beginner.
-- Use numbers and specifics. Avoid vague statements.
-- If the user pastes raw data (not CSV), reformat it mentally and proceed.
-- If the data is clearly incomplete (no metrics), say so and ask for the performance export.
-- Never fabricate data or metrics.`;
+- Be concise and professional. Speak marketer-to-marketer.
+- Use specific numbers always. Never be vague.
+- Never auto-generate a report without the user asking.
+- Never skip the conversation to jump to conclusions.
+- If the user provides incomplete data (no metrics), say so and ask for the performance export.
+- Never fabricate data or metrics.
+- Keep responses focused. One topic at a time. Don't dump everything at once.`;
 
 export default async (req: Request, _context: Context) => {
   try {
@@ -72,7 +75,7 @@ export default async (req: Request, _context: Context) => {
       meta: { sessionId, messageCount: messages?.length },
     });
 
-    // Ensure session exists
+    // Ensure session exists (ignoreDuplicates preserves client-set title)
     if (sessionId) {
       await createSession({ id: sessionId, userId, userEmail: email ?? undefined });
     }
@@ -87,7 +90,7 @@ export default async (req: Request, _context: Context) => {
     if (csvText && contents.length > 0) {
       const last = contents[contents.length - 1];
       if (last.role === 'user') {
-        last.parts[0].text = `[CSV Upload]\n\`\`\`csv\n${csvText}\n\`\`\`\n\n${last.parts[0].text}`;
+        last.parts[0].text = `[CSV Data Attached]\n\`\`\`csv\n${csvText}\n\`\`\`\n\n${last.parts[0].text}`;
       }
     }
 
@@ -103,7 +106,7 @@ export default async (req: Request, _context: Context) => {
         try {
           const result = await ai.models.generateContentStream({
             model: MODEL,
-            config: { systemInstruction: SYSTEM_PROMPT, temperature: 0.3 },
+            config: { systemInstruction: SYSTEM_PROMPT, temperature: 0.4 },
             contents,
           });
 
@@ -116,26 +119,7 @@ export default async (req: Request, _context: Context) => {
             }
           }
 
-          // Check for analysis_dispatch in the response
-          const dispatchMatch = fullText.match(/```json:analysis_dispatch\s*\n([\s\S]*?)\n```/);
-          if (dispatchMatch) {
-            try {
-              const dispatchData = JSON.parse(dispatchMatch[1]);
-              send('analysis_dispatch', { analysisConfig: dispatchData });
-
-              // Update session status
-              if (sessionId) {
-                await updateSession(sessionId, {
-                  status: 'analyzing',
-                  intake_summary: dispatchData,
-                });
-              }
-            } catch {
-              // JSON parse failure — not fatal, user still sees the text
-            }
-          }
-
-          // Persist messages
+          // Persist messages after streaming completes
           if (sessionId) {
             const allMessages = [
               ...(messages || []),
@@ -149,9 +133,7 @@ export default async (req: Request, _context: Context) => {
             });
           }
 
-          // Track usage
           await trackUsage(userId, APP_NAME);
-
           send('done', {});
         } catch (err: any) {
           send('error', { message: err.message || 'Streaming error' });
