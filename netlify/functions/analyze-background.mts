@@ -83,6 +83,8 @@ export default async (req: Request, _context: Context) => {
     user_id: userId,
     user_email: email,
     entity_id: jobId,
+    ai_provider: 'gemini',
+    ai_model: MODEL,
     meta: { sessionId, platform: analysisConfig?.platform },
   });
 

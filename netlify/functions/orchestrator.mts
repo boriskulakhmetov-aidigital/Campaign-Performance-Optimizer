@@ -118,6 +118,8 @@ export default async (req: Request, _context: Context) => {
       function_name: 'orchestrator',
       user_id: userId,
       user_email: email,
+      ai_provider: 'gemini',
+      ai_model: MODEL,
       meta: { sessionId, messageCount: messages?.length },
     });
 
