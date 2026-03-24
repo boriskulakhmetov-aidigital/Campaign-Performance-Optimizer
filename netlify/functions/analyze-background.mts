@@ -75,12 +75,13 @@ Platform benchmarks to use:
 Adjust benchmarks based on the vertical if you have domain knowledge.`;
 
 export default async (req: Request, _context: Context) => {
-  const { userId } = await requireAuth(req);
+  const { userId, email } = await requireAuth(req);
   const { jobId, sessionId, analysisConfig } = await req.json();
 
   log.info('analyze.start', {
     function_name: 'analyze-background',
     user_id: userId,
+    user_email: email,
     entity_id: jobId,
     meta: { sessionId, platform: analysisConfig?.platform },
   });
@@ -187,6 +188,7 @@ ${analysisConfig.csvData}
     log.info('analyze.complete', {
       function_name: 'analyze-background',
       user_id: userId,
+      user_email: email,
       entity_id: jobId,
       meta: {
         totalAds: analysisData.ads?.length,
@@ -199,6 +201,7 @@ ${analysisConfig.csvData}
     log.error('analyze.error', {
       function_name: 'analyze-background',
       user_id: userId,
+      user_email: email,
       entity_id: jobId,
       message: err.message,
     });

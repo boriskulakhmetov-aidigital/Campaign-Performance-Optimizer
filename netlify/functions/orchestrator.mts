@@ -102,8 +102,10 @@ Only when the user explicitly asks ("give me a report", "summarize", "wrap up", 
 
 
 export default async (req: Request, _context: Context) => {
+  let userId: string | undefined;
+  let email: string | null | undefined;
   try {
-    const { userId, email } = await requireAuth(req);
+    ({ userId, email } = await requireAuth(req));
 
     const access = await enforceAccess(userId, APP_NAME);
     if (!access.allowed) {
@@ -115,6 +117,7 @@ export default async (req: Request, _context: Context) => {
     log.info('orchestrator.start', {
       function_name: 'orchestrator',
       user_id: userId,
+      user_email: email,
       meta: { sessionId, messageCount: messages?.length },
     });
 
@@ -191,6 +194,7 @@ export default async (req: Request, _context: Context) => {
           log.error('orchestrator.stream_error', {
             function_name: 'orchestrator',
             user_id: userId,
+            user_email: email,
             message: err.message,
           });
         } finally {
@@ -209,6 +213,8 @@ export default async (req: Request, _context: Context) => {
   } catch (err: any) {
     log.error('orchestrator.error', {
       function_name: 'orchestrator',
+      user_id: userId,
+      user_email: email,
       message: err.message,
     });
     return Response.json({ error: err.message }, { status: err.message === 'Unauthorized' ? 401 : 500 });

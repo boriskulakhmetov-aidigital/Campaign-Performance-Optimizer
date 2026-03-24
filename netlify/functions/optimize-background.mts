@@ -52,12 +52,13 @@ Return ONLY valid JSON:
 }`;
 
 export default async (req: Request, _context: Context) => {
-  const { userId } = await requireAuth(req);
+  const { userId, email } = await requireAuth(req);
   const { jobId, sessionId, campaignId, analysisData } = await req.json();
 
   log.info('optimize.start', {
     function_name: 'optimize-background',
     user_id: userId,
+    user_email: email,
     entity_id: jobId,
     meta: { sessionId, campaignId },
   });
@@ -177,6 +178,7 @@ ${JSON.stringify(underperformers, null, 2)}`;
     log.info('optimize.complete', {
       function_name: 'optimize-background',
       user_id: userId,
+      user_email: email,
       entity_id: jobId,
       meta: { variationsGenerated: optimizeData.variations?.length },
     });
@@ -186,6 +188,7 @@ ${JSON.stringify(underperformers, null, 2)}`;
     log.error('optimize.error', {
       function_name: 'optimize-background',
       user_id: userId,
+      user_email: email,
       entity_id: jobId,
       message: err.message,
     });
