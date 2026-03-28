@@ -4,7 +4,7 @@ import '@boriskulakhmetov-aidigital/design-system/style.css';
 
 const GUIDE = `# Campaign Performance Optimizer — User Guide
 
-**Tool:** [Campaign Performance Optimizer](https://campaign-optimizer.apps.aidigitallabs.com)
+**Tool:** [Campaign Performance Optimizer](https://campaignoptimizer.apps.aidigitallabs.com)
 
 Analyze and optimize your marketing campaign performance with AI-powered insights. Get actionable recommendations to improve ROI, engagement, and conversion rates.
 

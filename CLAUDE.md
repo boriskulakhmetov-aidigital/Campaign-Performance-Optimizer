@@ -8,7 +8,7 @@
 |-------|-------|
 | App | Campaign Performance Optimizer |
 | Abbreviation | CPO |
-| URL | https://campaign-optimizer.apps.aidigitallabs.com |
+| URL | https://campaignoptimizer.apps.aidigitallabs.com |
 | Repo | `boriskulakhmetov-aidigital/Campaign-Performance-Optimizer` |
 | Netlify Site ID | `c259d853-4e67-4829-b7af-b680a6856afd` |
 | Table | `cpo_sessions` |
@@ -88,7 +88,7 @@ Only add site-level vars for app-specific config (e.g., `ADMIN_EMAILS`).
 |-------------|--------|----------|------|
 | Local dev | any | staging (rqpvrikighrlgjxzkqde) | localhost:5173 |
 | Staging | `develop` | staging (rqpvrikighrlgjxzkqde) | develop--aidigital-labs-campaign-optimizer.netlify.app |
-| Production | `main` | production (njwzbptrhgznozpndcxf) | campaign-optimizer.apps.aidigitallabs.com |
+| Production | `main` | production (njwzbptrhgznozpndcxf) | campaignoptimizer.apps.aidigitallabs.com |
 
 ### Workflow
 
