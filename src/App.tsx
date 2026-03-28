@@ -2,14 +2,15 @@ import {
   AppShell,
   ChatPanel,
   UploadZone,
+  useSessionPersistence,
 } from '@boriskulakhmetov-aidigital/design-system'
-import type { ChatMessage } from '@boriskulakhmetov-aidigital/design-system'
+import type { ChatMessage, UseSessionPersistenceReturn } from '@boriskulakhmetov-aidigital/design-system'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@clerk/react'
 import { useOrchestrator } from './hooks/useOrchestrator'
 import { parseGoogleAdsCsv } from './lib/csv-parser'
-import CampaignSidebar from './components/CampaignSidebar'
+import { Sidebar } from '@boriskulakhmetov-aidigital/design-system'
 import type { ParsedCsvResult } from './lib/types'
 import './App.css'
 
@@ -19,17 +20,18 @@ const supabaseConfig = import.meta.env.VITE_SUPABASE_URL ? {
   createClient: createClient as any,
 } : undefined
 
+const SESSION_CONFIG = {
+  table: 'cpo_sessions',
+  app: 'campaign-optimizer',
+  titleField: 'title',
+  defaultFields: { status: 'chatting' },
+}
+
 interface AppProps {
   auth: { SignIn: any; UserButton: any; useAuth: any }
 }
 
 export default function App({ auth }: AppProps) {
-  // Sidebar state (lifted above AppShell for ref-bridge)
-  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0)
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null)
-  const [sidebarSupabase, setSidebarSupabase] = useState<SupabaseClient | null>(null)
-
   // Ref-bridge: AppContent exposes handlers here
   const handlersRef = useRef<{
     onSelectSession: (id: string) => void
@@ -41,6 +43,9 @@ export default function App({ auth }: AppProps) {
     onDeleteSession: () => {},
   })
 
+  // Session state for sidebar (set by AppContent via ref-bridge)
+  const [sidebarSession, setSidebarSession] = useState<UseSessionPersistenceReturn | null>(null)
+
   return (
     <AppShell
       appTitle="Campaign Performance Optimizer"
@@ -49,73 +54,66 @@ export default function App({ auth }: AppProps) {
       supabaseConfig={supabaseConfig}
       helpUrl="/help"
       sidebar={
-        <CampaignSidebar
-          refreshKey={sidebarRefreshKey}
-          currentSessionId={currentSessionId}
-          loadingSessionId={loadingSessionId}
-          onSelectSession={(id) => handlersRef.current.onSelectSession(id)}
-          onNewSession={() => handlersRef.current.onNewSession()}
-          onDeleteSession={(id) => handlersRef.current.onDeleteSession(id)}
-          supabase={sidebarSupabase}
-        />
+        sidebarSession ? (
+          <Sidebar
+            items={sidebarSession.sessions}
+            activeId={sidebarSession.sessionId}
+            onSelect={(id) => handlersRef.current.onSelectSession(id)}
+            onNew={() => handlersRef.current.onNewSession()}
+            onDelete={(id) => handlersRef.current.onDeleteSession(id)}
+            newLabel="+ New Campaign"
+            emptyMessage="No campaigns yet. Upload a CSV to get started."
+            renderItem={(item) => (
+              <span className="aidl-sidebar__item-title">{item.title}</span>
+            )}
+          />
+        ) : null
       }
     >
-      {({ supabase }) => (
+      {({ supabase, authFetch }) => (
         <AppContent
           supabase={supabase}
+          authFetch={authFetch}
           handlersRef={handlersRef}
-          setSidebarSupabase={setSidebarSupabase}
-          setSidebarRefreshKey={setSidebarRefreshKey}
-          setCurrentSessionId={setCurrentSessionId}
-          setLoadingSessionId={setLoadingSessionId}
+          setSidebarSession={setSidebarSession}
         />
       )}
     </AppShell>
   )
 }
 
-/* ── Main Content ──────────────────────────────────────────────────── */
+/* -- Main Content --------------------------------------------------------- */
 
 interface AppContentProps {
   supabase: SupabaseClient | null
+  authFetch: ((url: string, init?: RequestInit) => Promise<Response>) | null
   handlersRef: React.MutableRefObject<{
     onSelectSession: (id: string) => void
     onNewSession: () => void
     onDeleteSession: (id: string) => void
   }>
-  setSidebarSupabase: (sb: SupabaseClient | null) => void
-  setSidebarRefreshKey: React.Dispatch<React.SetStateAction<number>>
-  setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>
-  setLoadingSessionId: React.Dispatch<React.SetStateAction<string | null>>
+  setSidebarSession: (s: UseSessionPersistenceReturn) => void
 }
 
 function AppContent({
   supabase,
+  authFetch,
   handlersRef,
-  setSidebarSupabase,
-  setSidebarRefreshKey,
-  setCurrentSessionId,
-  setLoadingSessionId,
+  setSidebarSession,
 }: AppContentProps) {
+  const { userId } = useAuth()
   const [csvFileName, setCsvFileName] = useState<string | null>(null)
   const [csvPreview, setCsvPreview] = useState<ParsedCsvResult | null>(null)
 
-  // Expose supabase to sidebar
-  useEffect(() => { setSidebarSupabase(supabase) }, [supabase, setSidebarSupabase])
+  const session = useSessionPersistence(supabase, authFetch ?? null, userId ?? null, SESSION_CONFIG)
 
-  const refreshSidebar = useCallback(() => setSidebarRefreshKey(k => k + 1), [setSidebarRefreshKey])
+  // Expose session to sidebar
+  useEffect(() => { setSidebarSession(session) }, [session, setSidebarSession])
 
-  // The orchestrator IS the app — no separate phases, no background agents dispatched from here.
-  // The LLM drives the entire conversation: ingest → analyze → discuss → optimize → report.
   const {
     messages, streaming, error: chatError,
-    sendMessage, setCsvText, reset: resetOrchestrator, loadSession, sessionId,
-  } = useOrchestrator(supabase, refreshSidebar)
-
-  // Track current session in sidebar
-  useEffect(() => {
-    if (sessionId && messages.length > 0) setCurrentSessionId(sessionId)
-  }, [sessionId, messages.length, setCurrentSessionId])
+    sendMessage, setCsvText, reset: resetOrchestrator, sessionId,
+  } = useOrchestrator(session)
 
   // CSV file handler
   function handleCsvFile(file: File) {
@@ -129,7 +127,7 @@ function AppContent({
 
       if (result.errors.length === 0) {
         sendMessage(
-          `I've uploaded "${file.name}" — a Google Ads CSV with ${result.totalAds} ads across ${result.campaigns.length} campaign(s). Total spend: $${result.totalSpend.toFixed(2)}.`
+          `I've uploaded "${file.name}" -- a Google Ads CSV with ${result.totalAds} ads across ${result.campaigns.length} campaign(s). Total spend: $${result.totalSpend.toFixed(2)}.`
         )
       } else {
         sendMessage(
@@ -142,35 +140,22 @@ function AppContent({
 
   // Sidebar handlers
   async function handleSelectSession(id: string) {
-    if (!supabase) return
-    setLoadingSessionId(id)
-    try {
-      const { data: session } = await supabase
-        .from('cpo_sessions')
-        .select('*')
-        .eq('id', id)
-        .single()
-      if (!session) return
-      setCurrentSessionId(id)
-      loadSession({ id: session.id, messages: session.messages || [] })
-    } finally {
-      setLoadingSessionId(null)
-    }
+    await session.loadSession(id)
+    setCsvFileName(null)
+    setCsvPreview(null)
   }
 
   function handleNewSession() {
     resetOrchestrator()
     setCsvFileName(null)
     setCsvPreview(null)
-    setCurrentSessionId(null)
   }
 
   async function handleDeleteSession(id: string) {
-    if (supabase) {
-      await supabase.from('cpo_sessions').update({ deleted_by_user: true }).eq('id', id)
+    await session.deleteSession(id)
+    if (sessionId === id) {
+      handleNewSession()
     }
-    if (sessionId === id) handleNewSession()
-    refreshSidebar()
   }
 
   // Wire ref-bridge

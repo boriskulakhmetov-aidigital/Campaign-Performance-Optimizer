@@ -2,7 +2,6 @@ import type { Context } from '@netlify/functions';
 import { requireAuth } from './_shared/auth.ts';
 import { enforceAccess, trackUsage, trackTokens } from './_shared/access.ts';
 import { log } from './_shared/logger.ts';
-import { createSession, updateSession } from './_shared/supabase.ts';
 import { GoogleGenAI } from '@google/genai';
 import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
 
@@ -123,11 +122,6 @@ export default async (req: Request, _context: Context) => {
       meta: { sessionId, messageCount: messages?.length },
     });
 
-    // Ensure session exists (ignoreDuplicates preserves client-set title)
-    if (sessionId) {
-      await createSession({ id: sessionId, userId, userEmail: email ?? undefined });
-    }
-
     // Build conversation for Gemini
     const contents = (messages || []).map((m: { role: string; content: string }) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
@@ -175,19 +169,7 @@ export default async (req: Request, _context: Context) => {
             trackTokens(userId, APP_NAME, 'google', MODEL, tokens.inputTokens, tokens.outputTokens, tokens.totalTokens).catch(() => {});
           }
 
-          // Persist messages after streaming completes
-          if (sessionId) {
-            const allMessages = [
-              ...(messages || []),
-              { role: 'assistant', content: fullText },
-            ];
-            await updateSession(sessionId, {
-              messages: allMessages.map((m: { role: string; content: string }) => ({
-                role: m.role,
-                content: m.content,
-              })),
-            });
-          }
+          // Session persistence is now handled client-side via useSessionPersistence + save-session
 
           await trackUsage(userId, APP_NAME);
           send('done', {});
