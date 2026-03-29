@@ -24,7 +24,7 @@
 | AI | Google Gemini (@google/genai v1.46.0) |
 | Backend | Netlify Functions (AI agents only — CRUD via PostgREST) |
 | Hosting | Netlify (static + serverless) |
-| Design System | @boriskulakhmetov-aidigital/design-system v7.16+ |
+| Design System | @boriskulakhmetov-aidigital/design-system ^7.31.4 |
 
 ## Gemini Models
 
