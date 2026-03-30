@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { useAuth } from '@clerk/react';
-import { parseSSEStream } from '@boriskulakhmetov-aidigital/design-system/utils';
-import type { UseSessionPersistenceReturn } from '@boriskulakhmetov-aidigital/design-system';
-import type { ChatMessage } from '@boriskulakhmetov-aidigital/design-system';
+import { parseSSEStream } from '@AiDigital-com/design-system/utils';
+import type { UseSessionPersistenceReturn } from '@AiDigital-com/design-system';
+import type { ChatMessage } from '@AiDigital-com/design-system';
 
 /**
  * Chat orchestrator hook — pure conversation, no dispatch.

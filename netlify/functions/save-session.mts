@@ -1,6 +1,6 @@
 import type { Context } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { mergeSession } from '@boriskulakhmetov-aidigital/design-system/server';
+import { mergeSession } from '@AiDigital-com/design-system/server';
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });

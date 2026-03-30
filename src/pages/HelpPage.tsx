@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { HelpPage, applyTheme, resolveTheme } from '@boriskulakhmetov-aidigital/design-system';
-import '@boriskulakhmetov-aidigital/design-system/style.css';
+import { HelpPage, applyTheme, resolveTheme } from '@AiDigital-com/design-system';
+import '@AiDigital-com/design-system/style.css';
 
 const GUIDE = `# Campaign Performance Optimizer — User Guide
 

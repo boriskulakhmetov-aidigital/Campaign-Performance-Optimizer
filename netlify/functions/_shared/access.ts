@@ -1,6 +1,6 @@
-import { checkAccess, recordUsage, getUserOrgId } from '@boriskulakhmetov-aidigital/design-system/access';
-import { logTokenUsage, detectSource } from '@boriskulakhmetov-aidigital/design-system/logger';
-import type { AccessSource } from '@boriskulakhmetov-aidigital/design-system/logger';
+import { checkAccess, recordUsage, getUserOrgId } from '@AiDigital-com/design-system/access';
+import { logTokenUsage, detectSource } from '@AiDigital-com/design-system/logger';
+import type { AccessSource } from '@AiDigital-com/design-system/logger';
 import { supabase } from './supabase.js';
 
 export async function enforceAccess(userId: string, app: string) {

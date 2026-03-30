@@ -3,14 +3,14 @@ import {
   ChatPanel,
   UploadZone,
   useSessionPersistence,
-} from '@boriskulakhmetov-aidigital/design-system'
-import type { ChatMessage, UseSessionPersistenceReturn } from '@boriskulakhmetov-aidigital/design-system'
+} from '@AiDigital-com/design-system'
+import type { ChatMessage, UseSessionPersistenceReturn } from '@AiDigital-com/design-system'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@clerk/react'
 import { useOrchestrator } from './hooks/useOrchestrator'
 import { parseGoogleAdsCsv } from './lib/csv-parser'
-import { Sidebar } from '@boriskulakhmetov-aidigital/design-system'
+import { Sidebar } from '@AiDigital-com/design-system'
 import type { ParsedCsvResult } from './lib/types'
 import './App.css'
 

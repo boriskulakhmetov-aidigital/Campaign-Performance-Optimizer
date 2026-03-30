@@ -3,7 +3,7 @@ import { requireAuth } from './_shared/auth.ts';
 import { enforceAccess, trackUsage, trackTokens } from './_shared/access.ts';
 import { log } from './_shared/logger.ts';
 import { GoogleGenAI } from '@google/genai';
-import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { extractGeminiTokens } from '@AiDigital-com/design-system/utils';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const APP_NAME = 'campaign-optimizer';

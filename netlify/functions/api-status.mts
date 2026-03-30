@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { handleApiStatus } from '@boriskulakhmetov-aidigital/design-system/server';
+import { handleApiStatus } from '@AiDigital-com/design-system/server';
 
 const APP_NAME = 'campaign-optimizer';
 
